@@ -4,7 +4,7 @@
 namespace snake
 {
 constexpr int maxClientNmb = 2;
-constexpr unsigned short serverPortNumber = 12345;
+constexpr unsigned short serverPortNumber = 33333;
 enum class SnakePhase
 {
     CONNECTION,
@@ -15,7 +15,7 @@ enum class SnakePhase
 using PlayerNumber = unsigned char;
 struct Move
 {
-    sf::Vector2i position;
+    int position;
     PlayerNumber playerNumber;
 };
 }

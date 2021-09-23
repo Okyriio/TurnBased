@@ -3,7 +3,7 @@
 
 int main()
 {
-    morpion::MorpionServer server;
+    snake::SnakeServer server;
     server.Run();
     return 0;
 }

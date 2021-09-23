@@ -18,14 +18,14 @@ namespace snake
         unsigned char packetType;
     };
 
-    inline sf::Packet& operator <<(sf::Packet& packet, const Packet& morpionPacket)
+    inline sf::Packet& operator <<(sf::Packet& packet, const Packet& snakePacket)
     {
-        return packet << morpionPacket.packetType;
+        return packet << snakePacket.packetType;
     }
 
-    inline sf::Packet& operator >>(sf::Packet& packet, Packet& morpionPacket)
+    inline sf::Packet& operator >>(sf::Packet& packet, Packet& snakePacket)
     {
-        return packet >> morpionPacket.packetType ;
+        return packet >> snakePacket.packetType ;
     }
 
     struct GameInitPacket : Packet
@@ -46,23 +46,21 @@ namespace snake
 
     struct MovePacket : Packet
     {
-        sf::Vector2i position;
+        int position;
         PlayerNumber playerNumber;
     };
 
     inline sf::Packet& operator <<(sf::Packet& packet, const MovePacket& movePacket)
     {
         return packet << movePacket.packetType
-            << movePacket.position.x
-            << movePacket.position.y
-            << movePacket.playerNumber;
+            << movePacket.position
+    	<< movePacket.playerNumber;
     }
 
     inline sf::Packet& operator >>(sf::Packet& packet, MovePacket& movePacket)
     {
         return packet
-            >> movePacket.position.x
-            >> movePacket.position.y
+            >> movePacket.position
             >> movePacket.playerNumber;
     }
 

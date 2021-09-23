@@ -17,7 +17,7 @@ public:
     int Run();
 private:
     std::array<sf::TcpSocket, maxClientNmb> sockets_;
-    std::array<Move, 9> moves_{};
+    std::array<Move, 25> moves_{};
     sf::SocketSelector selector_;
     sf::TcpListener listener_;
     SnakePhase phase_ = SnakePhase::CONNECTION;
@@ -28,7 +28,6 @@ private:
     void UpdateGamePhase();
     void UpdateEndPhase();
     void ReceivePacket();
-    PlayerNumber CheckWinner() const;
     void ManageMovePacket(const MovePacket& movePacket);
 
     int GetNextSocket();

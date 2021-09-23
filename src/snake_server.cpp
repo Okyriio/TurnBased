@@ -1,14 +1,13 @@
 #include "snake_server.h"
 #include <SFML/Network/TcpSocket.hpp>
-
 #include <iostream>
 #include <random>
-
 #include "snake_packet.h"
 
-namespace morpion
+
+namespace snake
 {
-    void MorpionServer::ReceivePacket()
+    void SnakeServer::ReceivePacket()
     {
         if (selector_.wait(sf::milliseconds(20)))
         {
@@ -41,102 +40,14 @@ namespace morpion
         }
     }
 
-    PlayerNumber MorpionServer::CheckWinner() const
-    {
-        std::array<std::array<PlayerNumber, 3>, 3> board{};
-        std::ranges::for_each(board, [](auto& line)
-        {
-            line.fill(255u);
-        });
-        for(unsigned i = 0; i < currentMoveIndex_; i++)
-        {
-            const auto& move = moves_[i];
-            board[move.position.x][move.position.y] = move.playerNumber;
-        }
-        //Line
-        for(unsigned i = 0; i < 3; i++)
-        {
-            PlayerNumber firstTile = board[i][0];
-            bool victory = true;
-            for(unsigned j = 1; j < 3; j++)
-            {
-                if (firstTile != board[i][j])
-                {
-                    victory = false;
-                    break;
-                }
-            }
-            if(victory && firstTile != 255u)
-            {
-                return firstTile;
-            }
-        }
-        //Column
-        for (unsigned i = 0; i < 3; i++)
-        {
-            PlayerNumber firstTile = board[0][i];
-            bool victory = true;
-            for (unsigned j = 1; j < 3; j++)
-            {
-                if (firstTile != board[j][i])
-                {
-                    victory = false;
-                    break;
-                }
-            }
-            if (victory && firstTile != 255u)
-            {
-                return firstTile;
-            }
-        }
-        //First diagonal
-        {
-            PlayerNumber firstTile = board[0][0];
-            bool victory = true;
-            for (unsigned i = 1; i < 3; i++)
-            {
-                if (firstTile != board[i][i])
-                {
-                    victory = false;
-                    break;
-                }
-            }
-            if (victory && firstTile != 255u)
-            {
-                return firstTile;
-            }
-        }
-        {
-            const std::array diagonal = {
-                sf::Vector2i(2,0),
-                sf::Vector2i(1,1),
-                sf::Vector2i(0,2)
-            };
-            PlayerNumber firstTile = board[diagonal[0].x][diagonal[0].y];
-            bool victory = true;
-            for (unsigned i = 1; i < 3; i++)
-            {
-                if (firstTile != board[diagonal[i].x][diagonal[i].y])
-                {
-                    victory = false;
-                    break;
-                }
-            }
-            if (victory && firstTile != 255u)
-            {
-                return firstTile;
-            }
-        }
-        return 255u;
-    }
 
-    void MorpionServer::ManageMovePacket(const MovePacket& movePacket)
-    {
-        std::cout << "Player " << movePacket.playerNumber + 1 <<
-            " made move " << movePacket.position.x << ',' <<
-            movePacket.position.y << '\n';
 
-        if (phase_ != MorpionPhase::GAME)
+
+    void SnakeServer::ManageMovePacket(const MovePacket& movePacket)
+    {
+        std::cout << "Player " << movePacket.playerNumber + 1;
+
+        if (phase_ != SnakePhase::GAME)
             return;
 
         if(currentMoveIndex_ % 2 != movePacket.playerNumber)
@@ -145,30 +56,12 @@ namespace morpion
             return;
         }
 
-        if(movePacket.position.x > 2 || movePacket.position.y > 2)
-        {
-            return;
-        }
 
-        for(unsigned char i = 0; i < currentMoveIndex_; i++)
-        {
-            if(moves_[i].position == movePacket.position)
-                //TODO return an error msg
-                return;
-        }
 
-        auto& currentMove = moves_[currentMoveIndex_];
-        currentMove.position = movePacket.position;
-        currentMove.playerNumber = movePacket.playerNumber;
-        currentMoveIndex_++;
         EndType endType = EndType::NONE;
-        if(currentMoveIndex_ == 9)
-        {
-            //TODO end of game
-            endType = EndType::STALEMATE;
-        }
+       
         //TODO check victory condition
-        PlayerNumber winningPlayer = CheckWinner();
+        PlayerNumber winningPlayer = 255u;
         if(winningPlayer != 255u)
         {
             endType = winningPlayer ? EndType::WIN_P2 : EndType::WIN_P1;
@@ -193,7 +86,7 @@ namespace morpion
 
             }
 
-            phase_ = MorpionPhase::END;
+            phase_ = SnakePhase::END;
         }
         MovePacket newMovePacket = movePacket;
         newMovePacket.packetType = static_cast<unsigned char>(PacketType::MOVE);
@@ -212,7 +105,7 @@ namespace morpion
         }
     }
 
-    int MorpionServer::Run()
+    int SnakeServer::Run()
     {
         if (listener_.listen(serverPortNumber) != sf::Socket::Done)
         {
@@ -225,25 +118,25 @@ namespace morpion
         {
             switch (phase_)
             {
-            case MorpionPhase::CONNECTION:
+            case SnakePhase::CONNECTION:
                 ReceivePacket();
                 UpdateConnectionPhase();
                 break;
-            case MorpionPhase::GAME:
+            case SnakePhase::GAME:
                 ReceivePacket();
                 UpdateGamePhase();
                 break;
-            case MorpionPhase::END:
+            case SnakePhase::END:
                 return EXIT_SUCCESS;
             default:;
             }
         }
     }
 
-    void MorpionServer::StartNewGame()
+    void SnakeServer::StartNewGame()
     {
         //Switch to Game state
-        phase_ = MorpionPhase::GAME;
+        phase_ = SnakePhase::GAME;
         //Send game init packet
         std::cout << "Two players connected!\n";
 
@@ -266,7 +159,7 @@ namespace morpion
         }
     }
 
-    void MorpionServer::UpdateConnectionPhase()
+    void SnakeServer::UpdateConnectionPhase()
     {
         // accept a new connection
         const auto nextIndex = GetNextSocket();
@@ -290,15 +183,16 @@ namespace morpion
         }
     }
 
-    void MorpionServer::UpdateGamePhase()
+    void SnakeServer::UpdateGamePhase()
+    {
+      
+    }
+
+    void SnakeServer::UpdateEndPhase()
     {
     }
 
-    void MorpionServer::UpdateEndPhase()
-    {
-    }
-
-    int MorpionServer::GetNextSocket()
+    int SnakeServer::GetNextSocket()
     {
         for (int i = 0; i < maxClientNmb; i++)
         {
@@ -309,4 +203,5 @@ namespace morpion
         }
         return -1;
     }
+
 }

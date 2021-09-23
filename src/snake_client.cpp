@@ -10,242 +10,250 @@
 #include "snake_packet.h"
 #include "snake_settings.h"
 
-namespace morpion
+namespace snake
 {
-sf::Socket::Status MorpionClient::Connect(sf::IpAddress address, unsigned short portNumber)
-{
-    const auto status = socket_.connect(address, portNumber);
-    socket_.setBlocking(false);
-    return status;
-}
-
-MorpionPhase MorpionClient::GetPhase() const
-{
-    return phase_;
-}
-
-bool MorpionClient::IsConnected() const
-{
-    return socket_.getLocalPort() != 0;
-}
-
-void MorpionClient::Init()
-{
-}
-
-void MorpionClient::ReceivePacket(sf::Packet& packet)
-{
-    Packet morpionPacket{};
-    packet >> morpionPacket;
-    
-    switch (static_cast<PacketType>(morpionPacket.packetType))
+    sf::Socket::Status SnakeClient::Connect(sf::IpAddress address, unsigned short portNumber)
     {
-    case PacketType::GAME_INIT:
-    {
-        GameInitPacket gameInitPacket{};
-        packet >> gameInitPacket;
-        playerNumber_ = gameInitPacket.playerNumber;
-        phase_ = MorpionPhase::GAME;
-        std::cout << "You are player " << gameInitPacket.playerNumber + 1 << '\n';
-        break;
+        const auto status = socket_.connect(address, portNumber);
+        socket_.setBlocking(false);
+        return status;
     }
-    case PacketType::MOVE:
+
+    SnakePhase SnakeClient::GetPhase() const
     {
-        if (phase_ != MorpionPhase::GAME)
+        return phase_;
+    }
+
+    bool SnakeClient::IsConnected() const
+    {
+        return socket_.getLocalPort() != 0;
+    }
+
+    void SnakeClient::Init()
+    {
+    }
+
+    void SnakeClient::ReceivePacket(sf::Packet& packet)
+    {
+        Packet snakePacket{};
+        packet >> snakePacket;
+
+        switch (static_cast<PacketType>(snakePacket.packetType))
+        {
+        case PacketType::GAME_INIT:
+        {
+            GameInitPacket gameInitPacket{};
+            packet >> gameInitPacket;
+            playerNumber_ = gameInitPacket.playerNumber;
+            phase_ = SnakePhase::GAME;
+            std::cout << "You are player " << gameInitPacket.playerNumber + 1 << '\n';
             break;
+        }
+        case PacketType::MOVE:
+        {
+            if (phase_ != SnakePhase::GAME)
+                break;
+            MovePacket movePacket;
+            packet >> movePacket;
+            std::cout << "Receive move packet from player " <<
+                movePacket.playerNumber + 1 << " with position: " << movePacket.position;
+            auto& currentMove = moves_[currentMoveIndex_];
+            currentMove.position = movePacket.position;
+            currentMove.playerNumber = movePacket.playerNumber;
+            currentMoveIndex_++;
+            break;
+        }
+        case PacketType::END:
+        {
+            if (phase_ != SnakePhase::GAME)
+            {
+                break;
+            }
+            EndPacket endPacket;
+            packet >> endPacket;
+            switch (endPacket.endType)
+            {
+            case EndType::STALEMATE:
+                endMessage_ = "Stalemate";
+                break;
+            case EndType::WIN_P1:
+                endMessage_ = playerNumber_ == 0 ? "You won" : "You lost";
+                break;
+            case EndType::WIN_P2:
+                endMessage_ = playerNumber_ == 1 ? "You won" : "You lost";
+                break;
+            case EndType::ERROR:
+                endMessage_ = "Error";
+                break;
+            default:;
+            }
+            phase_ = SnakePhase::END;
+            break;
+        }
+        default:
+            break;
+        }
+    }
+
+    void SnakeClient::Update()
+    {
+        //Receive packetS
+        if (socket_.getLocalPort() != 0)
+        {
+            sf::Packet receivedPacket;
+            sf::Socket::Status status;
+            do
+            {
+                status = socket_.receive(receivedPacket);
+            } while (status == sf::Socket::Partial);
+
+            if (status == sf::Socket::Done)
+            {
+                ReceivePacket(receivedPacket);
+            }
+
+            if (status == sf::Socket::Disconnected)
+            {
+                socket_.disconnect();
+                std::cerr << "Server disconnected\n";
+            }
+        }
+    }
+
+    void SnakeClient::Destroy()
+    {
+    }
+
+    int SnakeClient::GetPlayerNumber() const
+    {
+        return playerNumber_;
+    }
+
+    void SnakeClient::SendNewMove(int position)
+    {
         MovePacket movePacket;
-        packet >> movePacket;
-        std::cout << "Receive move packet from player " << 
-            movePacket.playerNumber + 1 << " with position: "<< movePacket.position.x<<','<<movePacket.position.y << '\n';
-        auto& currentMove = moves_[currentMoveIndex_];
-        currentMove.position = movePacket.position;
-        currentMove.playerNumber = movePacket.playerNumber;
-        currentMoveIndex_++;
-        break;
-    }
-    case PacketType::END:
-    {
-        if(phase_ != MorpionPhase::GAME)
-        {
-            break;
-        }
-        EndPacket endPacket;
-        packet >> endPacket;
-        switch (endPacket.endType)
-        {
-        case EndType::STALEMATE: 
-            endMessage_ = "Stalemate";
-            break;
-        case EndType::WIN_P1:
-            endMessage_ = playerNumber_ == 0 ? "You won" : "You lost";
-            break;
-        case EndType::WIN_P2: 
-            endMessage_ = playerNumber_ == 1 ? "You won" : "You lost";
-            break;
-        case EndType::ERROR: 
-            endMessage_ = "Error";
-            break;
-        default: ;
-        }
-        phase_ = MorpionPhase::END;
-        break;
-    }
-    default: 
-        break;
-    }
-}
-
-void MorpionClient::Update()
-{
-    //Receive packetS
-    if(socket_.getLocalPort() != 0)
-    {
-        sf::Packet receivedPacket;
-        sf::Socket::Status status;
+        movePacket.packetType = static_cast<unsigned char>(PacketType::MOVE);
+        movePacket.position = position;
+        movePacket.playerNumber = playerNumber_;
+        sf::Packet packet;
+        packet << movePacket;
+        sf::Socket::Status sentStatus;
         do
         {
-            status = socket_.receive(receivedPacket);
-        } while (status == sf::Socket::Partial);
-
-        if (status == sf::Socket::Done)
-        {
-            ReceivePacket(receivedPacket);
-        }
-
-        if (status == sf::Socket::Disconnected)
-        {
-            socket_.disconnect();
-            std::cerr << "Server disconnected\n";
-        }
+            sentStatus = socket_.send(packet);
+        } while (sentStatus == sf::Socket::Partial);
     }
-}
 
-void MorpionClient::Destroy()
-{
-}
-
-int MorpionClient::GetPlayerNumber() const
-{
-    return playerNumber_;
-}
-
-void MorpionClient::SendNewMove(sf::Vector2i position)
-{
-    MovePacket movePacket;
-    movePacket.packetType = static_cast<unsigned char>(PacketType::MOVE);
-    movePacket.position = position;
-    movePacket.playerNumber = playerNumber_;
-    sf::Packet packet;
-    packet << movePacket;
-    sf::Socket::Status sentStatus;
-    do
+    const std::array<Move, 25>& SnakeClient::GetMoves() const
     {
-        sentStatus = socket_.send(packet);
-    } while (sentStatus == sf::Socket::Partial);
-}
+        return moves_;
+    }
 
-const std::array<Move, 9>& MorpionClient::GetMoves() const
-{
-    return moves_;
-}
-
-unsigned char MorpionClient::GetMoveIndex() const
-{
-    return currentMoveIndex_;
-}
-
-std::string_view MorpionClient::GetEndMessage() const
-{
-    return endMessage_;
-}
-
-MorpionView::MorpionView(MorpionClient& client) : client_(client)
-{
-}
-
-void MorpionView::DrawImGui()
-{
-    switch(client_.GetPhase())
+    unsigned char SnakeClient::GetMoveIndex() const
     {
-    case MorpionPhase::CONNECTION:
-    {
-        if (client_.IsConnected())
-            return;
-        ImGui::Begin("Client");
+        return currentMoveIndex_;
+    }
 
-        ImGui::InputText("Ip Address", &ipAddressBuffer_);
-        ImGui::InputInt("Port Number", &portNumber_);
-        if (ImGui::Button("Connect"))
+    std::string_view SnakeClient::GetEndMessage() const
+    {
+        return endMessage_;
+    }
+
+    SnakeView::SnakeView(SnakeClient& client) : client_(client)
+    {
+    }
+
+    int Draw()
+    {
+        srand(time(NULL));
+        return rand() % 6 + 1;
+    }
+    void SnakeView::DrawImGui()
+    {
+        switch (client_.GetPhase())
         {
-            const auto status = client_.Connect(sf::IpAddress(ipAddressBuffer_), portNumber_);
-            if (status != sf::Socket::Done)
+        case SnakePhase::CONNECTION:
+        {
+            if (client_.IsConnected())
+                return;
+            ImGui::Begin("Client");
+
+            ImGui::InputText("Ip Address", &ipAddressBuffer_);
+            ImGui::InputInt("Port Number", &portNumber_);
+            if (ImGui::Button("Connect"))
             {
-                switch (status)
+                const auto status = client_.Connect(sf::IpAddress(ipAddressBuffer_), portNumber_);
+                if (status != sf::Socket::Done)
                 {
-                case sf::Socket::NotReady:
-                    std::cerr << "Not ready to connect to " << ipAddressBuffer_ << ':' << portNumber_ << '\n';
-                    break;
-                case sf::Socket::Partial:
-                    std::cerr << "Connecting to " << ipAddressBuffer_ << ':' << portNumber_ << '\n';
-                    break;
-                case sf::Socket::Disconnected:
-                    std::cerr << "Disconnecting to " << ipAddressBuffer_ << ':' << portNumber_ << '\n';
-                    break;
-                case sf::Socket::Error:
-                    std::cerr << "Error connecting to " << ipAddressBuffer_ << ':' << portNumber_ << '\n';
-                    break;
-                default:;
+                    switch (status)
+                    {
+                    case sf::Socket::NotReady:
+                        std::cerr << "Not ready to connect to " << ipAddressBuffer_ << ':' << portNumber_ << '\n';
+                        break;
+                    case sf::Socket::Partial:
+                        std::cerr << "Connecting to " << ipAddressBuffer_ << ':' << portNumber_ << '\n';
+                        break;
+                    case sf::Socket::Disconnected:
+                        std::cerr << "Disconnecting to " << ipAddressBuffer_ << ':' << portNumber_ << '\n';
+                        break;
+                    case sf::Socket::Error:
+                        std::cerr << "Error connecting to " << ipAddressBuffer_ << ':' << portNumber_ << '\n';
+                        break;
+                    default:;
+                    }
+                }
+                else
+                {
+                    std::cout << "Successfully connected to server\n";
+                }
+
+            }
+            ImGui::End();
+            break;
+
+
+
+
+        case SnakePhase::GAME:
+        {
+            const auto playerNumber = client_.GetPlayerNumber();
+            ImGui::Begin("Client");
+            ImGui::Text("You are player %d", playerNumber + 1);
+
+            std::array<char, 25> board;
+            board.fill(' ');
+            board[24] = 0;
+            const auto& moves = client_.GetMoves();
+
+            ImGui::Text("%s", board.data());
+
+
+            ImGui::Button("New Move");
+            if (client_.GetMoveIndex() % 2 == playerNumber)
+            {
+                int move;
+                move = Draw();
+
+                if (ImGui::Button("Send"))
+                {
+                    client_.SendNewMove(int(currentPosition_[move]));
                 }
             }
-            else
-            {
-                std::cout << "Successfully connected to server\n";
-            }
-
+            ImGui::End();
+            break;
         }
-        ImGui::End();
-        break;
-    }
-    case MorpionPhase::GAME:
-    {
-        const auto playerNumber = client_.GetPlayerNumber();
-        ImGui::Begin("Client");
-        ImGui::Text("You are player %d", playerNumber + 1);
-
-        std::array<char, 10> board;
-        board.fill(' ');
-        board[9] = 0;
-        const auto& moves = client_.GetMoves();
-        for (unsigned char i = 0; i < client_.GetMoveIndex(); i++)
+        case SnakePhase::END:
         {
-            const auto& move = moves[i];
-            board[move.position.y * 3 + move.position.x] = move.playerNumber ? 'X' : 'O';
+            ImGui::Begin("Client");
+            ImGui::Text("%s", client_.GetEndMessage().data());
+            ImGui::End();
+            break;
         }
-        ImGui::Text("%s", board.data());
-
-
-        ImGui::InputInt2("New Move", currentPosition_.data());
-        if (client_.GetMoveIndex() % 2 == playerNumber)
-        {
-            if (ImGui::Button("Send"))
-            {
-                client_.SendNewMove(sf::Vector2i(currentPosition_[0], currentPosition_[1]));
-            }
+        default:;
         }
-        ImGui::End();
-        break;
-    }
-    case MorpionPhase::END:
-    {
-        ImGui::Begin("Client");
-        ImGui::Text("%s", client_.GetEndMessage().data());
-        ImGui::End();
-        break;
-    }
-    default: ;
-    }
-    
 
-    
-}
+
+
+        }
+    }
 }

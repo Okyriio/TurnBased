@@ -24,17 +24,24 @@ public:
     void Update() override;
     void Destroy() override;
     int GetPlayerNumber() const;
-    void SendNewMove(sf::Vector2i position);
-    const std::array<Move, 9>& GetMoves() const;
+    void SendNewMove(int position);
+    const std::array<Move, 25>& GetMoves() const;
     unsigned char GetMoveIndex() const;
     std::string_view GetEndMessage() const;
 private:
     sf::TcpSocket socket_;
     SnakePhase phase_ = SnakePhase::CONNECTION;
-    std::array<Move, 9> moves_{};
+    std::array<Move, 25> moves_{};
     unsigned char currentMoveIndex_ = 0;
     std::string endMessage_;
     PlayerNumber playerNumber_ = 255u;
+    int Draw();
+};
+
+class Dice
+{
+public:
+    int Draw();
 };
 
 
@@ -47,6 +54,6 @@ private:
     SnakeClient& client_;
     std::string ipAddressBuffer_ = "localhost";
     int portNumber_ = serverPortNumber;
-    std::array<int, 2> currentPosition_{};
+    std::array<int, 500> currentPosition_{};
 };
 }

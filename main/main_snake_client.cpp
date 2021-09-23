@@ -5,8 +5,8 @@
 
 int main()
 {
-    morpion::MorpionClient client;
-    morpion::MorpionView view(client);
+    snake::SnakeClient client;
+    snake::SnakeView view(client);
     Engine engine;
     engine.AddDrawImGuiSystem(&view);
     engine.AddSystem(&client);
