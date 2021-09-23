@@ -1,10 +1,10 @@
-#include "morpion_server.h"
+#include "snake_server.h"
 #include <SFML/Network/TcpSocket.hpp>
 
 #include <iostream>
 #include <random>
 
-#include "morpion_packet.h"
+#include "snake_packet.h"
 
 namespace morpion
 {

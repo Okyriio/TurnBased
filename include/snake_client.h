@@ -7,17 +7,17 @@
 #include <SFML/Network/TcpSocket.hpp>
 #include <SFML/System/Vector2.hpp>
 
-#include "morpion_settings.h"
+#include "snake_settings.h"
 #include "system.h"
 
-namespace morpion
+namespace snake
 {
 
-class MorpionClient : public System
+class SnakeClient : public System
 {
 public:
     sf::Socket::Status Connect(sf::IpAddress address, unsigned short portNumber);
-    MorpionPhase GetPhase() const;
+    SnakePhase GetPhase() const;
     bool IsConnected() const;
     void Init() override;
     void ReceivePacket(sf::Packet& packet);
@@ -30,7 +30,7 @@ public:
     std::string_view GetEndMessage() const;
 private:
     sf::TcpSocket socket_;
-    MorpionPhase phase_ = MorpionPhase::CONNECTION;
+    SnakePhase phase_ = SnakePhase::CONNECTION;
     std::array<Move, 9> moves_{};
     unsigned char currentMoveIndex_ = 0;
     std::string endMessage_;
@@ -38,13 +38,13 @@ private:
 };
 
 
-class MorpionView : public DrawImGuiInterface
+class SnakeView : public DrawImGuiInterface
 {
 public:
-    MorpionView(MorpionClient& client);
+    SnakeView(SnakeClient& client);
     void DrawImGui() override;
 private:
-    MorpionClient& client_;
+    SnakeClient& client_;
     std::string ipAddressBuffer_ = "localhost";
     int portNumber_ = serverPortNumber;
     std::array<int, 2> currentPosition_{};

@@ -4,14 +4,14 @@
 #include <SFML/Network/SocketSelector.hpp>
 #include <SFML/Network/TcpListener.hpp>
 #include <SFML/Network/TcpSocket.hpp>
-#include <morpion_settings.h>
+#include <snake_settings.h>
 
-#include "morpion_packet.h"
+#include "snake_packet.h"
 
-namespace morpion
+namespace snake
 {
 
-class MorpionServer
+class SnakeServer
 {
 public:
     int Run();
@@ -20,7 +20,7 @@ private:
     std::array<Move, 9> moves_{};
     sf::SocketSelector selector_;
     sf::TcpListener listener_;
-    MorpionPhase phase_ = MorpionPhase::CONNECTION;
+    SnakePhase phase_ = SnakePhase::CONNECTION;
     unsigned char currentMoveIndex_ = 0;
 
     void StartNewGame();

@@ -1,10 +1,10 @@
 #pragma once
 
-#include <morpion_settings.h>
+#include <snake_settings.h>
 #include <SFML/Network/Packet.hpp>
 #include <SFML/System/Vector2.hpp>
 
-namespace morpion
+namespace snake
 {
     enum class PacketType : unsigned char
     {

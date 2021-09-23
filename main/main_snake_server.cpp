@@ -1,5 +1,5 @@
 
-#include "morpion_server.h"
+#include "snake_server.h"
 
 int main()
 {

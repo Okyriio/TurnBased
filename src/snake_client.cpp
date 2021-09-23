@@ -1,4 +1,4 @@
-#include "morpion_client.h"
+#include "snake_client.h"
 
 #include <array>
 #include <imgui.h>
@@ -7,7 +7,8 @@
 #include <SFML/Network/Packet.hpp>
 #include <SFML/Network/Socket.hpp>
 
-#include "morpion_packet.h"
+#include "snake_packet.h"
+#include "snake_settings.h"
 
 namespace morpion
 {

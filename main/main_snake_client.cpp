@@ -1,7 +1,7 @@
 
 
 #include "engine.h"
-#include "morpion_client.h"
+#include "snake_client.h"
 
 int main()
 {
