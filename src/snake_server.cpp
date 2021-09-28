@@ -1,4 +1,6 @@
 #include "snake_server.h"
+
+#include <imgui.h>
 #include <SFML/Network/TcpSocket.hpp>
 #include <iostream>
 #include <random>
@@ -28,7 +30,7 @@ namespace snake
                     {
                     case PacketType::MOVE:
                     {
-                        MovePacket movePacket;
+                        RollPacket movePacket;
                         receivedPacket >> movePacket;
                         ManageMovePacket(movePacket);
                         break;
@@ -43,34 +45,52 @@ namespace snake
 
 
 
-    void SnakeServer::ManageMovePacket(const MovePacket& movePacket)
+    void SnakeServer::ManageMovePacket(const RollPacket& rollPacket)
     {
-        std::cout << "Player " << movePacket.playerNumber + 1;
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<int> distribution(1, 6);
+
+        std::cout << "Player " << rollPacket.playerNumber + 1 <<
+            " rolled a " << distribution(gen) << " !" << '\n';
 
         if (phase_ != SnakePhase::GAME)
             return;
 
-        if(currentMoveIndex_ % 2 != movePacket.playerNumber)
-        {
-            //TODO return to player an error msg
-            return;
-        }
-
-
 
         EndType endType = EndType::NONE;
-       
-        //TODO check victory condition
-        PlayerNumber winningPlayer = 255u;
-        if(winningPlayer != 255u)
+        //if(currentMoveIndex_ == 9)
+        //{
+        //    //TODO end of game
+        //    endType = EndType::STALEMATE;
+        //}
+        ////TODO check victory condition
+        //PlayerNumber winningPlayer = CheckWinner();
+        //if(winningPlayer != 255u)
+        //{
+        //    endType = winningPlayer ? EndType::WIN_P2 : EndType::WIN_P1;
+        //}
+
+        RollPacket newRollPacket = rollPacket;
+        newRollPacket.packetType = PacketType::DRAW;
+
+        //sent new move to all players
+        for (auto& socket : sockets_)
         {
-            endType = winningPlayer ? EndType::WIN_P2 : EndType::WIN_P1;
+            sf::Packet sentPacket;
+            sentPacket << newRollPacket;
+            sf::Socket::Status sentStatus;
+            do
+            {
+                sentStatus = socket.send(sentPacket);
+            } while (sentStatus == sf::Socket::Partial);
+
         }
-        //TODO send end of game packet
-        if(endType != EndType::NONE)
+        //send end of game packet
+        if (endType != EndType::NONE)
         {
             EndPacket endPacket{};
-            endPacket.packetType = static_cast<unsigned char>(PacketType::END);
+            endPacket.packetType = PacketType::END;
             endPacket.endType = endType;
 
             //sent new move to all players
@@ -88,22 +108,8 @@ namespace snake
 
             phase_ = SnakePhase::END;
         }
-        MovePacket newMovePacket = movePacket;
-        newMovePacket.packetType = static_cast<unsigned char>(PacketType::MOVE);
-
-        //sent new move to all players
-        for(auto& socket: sockets_)
-        {
-            sf::Packet sentPacket;
-            sentPacket << newMovePacket;
-            sf::Socket::Status sentStatus;
-            do
-            {
-                sentStatus = socket.send(sentPacket);
-            } while (sentStatus == sf::Socket::Partial);
-            
-        }
     }
+
 
     int SnakeServer::Run()
     {
@@ -133,6 +139,8 @@ namespace snake
         }
     }
 
+   
+
     void SnakeServer::StartNewGame()
     {
         //Switch to Game state
@@ -147,7 +155,7 @@ namespace snake
         for (unsigned char i = 0; i < sockets_.size(); i++)
         {
             GameInitPacket gameInitPacket;
-            gameInitPacket.packetType = static_cast<unsigned char>(PacketType::GAME_INIT);
+            gameInitPacket.playerNumber = static_cast<unsigned char>(PacketType::GAME_INIT);
             gameInitPacket.playerNumber = i != dice_roll;
             sf::Packet sentPacket;
             sentPacket << gameInitPacket;
@@ -183,11 +191,12 @@ namespace snake
         }
     }
 
-    void SnakeServer::UpdateGamePhase()
+  
+    int SnakeServer::Draw()
     {
-      
+        srand(time(NULL));
+        return rand() % 6 + 1;
     }
-
     void SnakeServer::UpdateEndPhase()
     {
     }

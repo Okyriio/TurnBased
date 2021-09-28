@@ -8,6 +8,7 @@
 #include <SFML/Network/Socket.hpp>
 
 #include "snake_packet.h"
+#include "snake_server.h"
 #include "snake_settings.h"
 
 namespace snake
@@ -53,12 +54,11 @@ namespace snake
         {
             if (phase_ != SnakePhase::GAME)
                 break;
-            MovePacket movePacket;
+            RollPacket movePacket;
             packet >> movePacket;
-            std::cout << "Receive move packet from player " <<
-                movePacket.playerNumber + 1 << " with position: " << movePacket.position;
+            std::cout << "Receive move packet from player ";
             auto& currentMove = moves_[currentMoveIndex_];
-            currentMove.position = movePacket.position;
+           
             currentMove.playerNumber = movePacket.playerNumber;
             currentMoveIndex_++;
             break;
@@ -131,9 +131,7 @@ namespace snake
 
     void SnakeClient::SendNewMove(int position)
     {
-        MovePacket movePacket;
-        movePacket.packetType = static_cast<unsigned char>(PacketType::MOVE);
-        movePacket.position = position;
+        RollPacket movePacket;
         movePacket.playerNumber = playerNumber_;
         sf::Packet packet;
         packet << movePacket;
@@ -144,7 +142,7 @@ namespace snake
         } while (sentStatus == sf::Socket::Partial);
     }
 
-    const std::array<Move, 25>& SnakeClient::GetMoves() const
+    const std::array<Move, 50>& SnakeClient::GetMoves() const
     {
         return moves_;
     }
@@ -163,11 +161,19 @@ namespace snake
     {
     }
 
-    int Draw()
+    void SnakeClient::SendNewRoll()
     {
-        srand(time(NULL));
-        return rand() % 6 + 1;
+        RollPacket rollPacket;
+        rollPacket.packetType = PacketType::DRAW;
+        sf::Packet packet;
+        packet << rollPacket;
+        sf::Socket::Status sentStatus;
+        do
+        {
+            sentStatus = socket_.send(packet);
+        } while (sentStatus == sf::Socket::Partial);
     }
+  
     void SnakeView::DrawImGui()
     {
         switch (client_.GetPhase())
@@ -228,19 +234,7 @@ namespace snake
             ImGui::Text("%s", board.data());
 
 
-            ImGui::Button("New Move");
-            if (client_.GetMoveIndex() % 2 == playerNumber)
-            {
-                int move;
-                move = Draw();
-
-                if (ImGui::Button("Send"))
-                {
-                    client_.SendNewMove(int(currentPosition_[move]));
-                }
-            }
-            ImGui::End();
-            break;
+            
         }
         case SnakePhase::END:
         {

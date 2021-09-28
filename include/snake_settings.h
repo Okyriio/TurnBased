@@ -13,6 +13,7 @@ enum class SnakePhase
 };
 
 using PlayerNumber = unsigned char;
+using PlayerMove = unsigned int;
 struct Move
 {
     int position;
